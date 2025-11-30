@@ -306,16 +306,113 @@ async function getAllMatchupData(leagueString) {
     return data;
 }
 
-cron.schedule('5 0 * * *', () => {
-    fetchNBASchedule();
+cron.schedule('5 0 * * *', async () => {
+    const results = await fetchNBASchedule();
+
+    for (const matchup of results){ 
+        const { error } = await supabase.from("nba_games").insert({
+            home_team: matchup.homeTeam.shortName,
+            away_team: matchup.awayTeam.shortName,
+            event_date: new Date(matchup.scheduledTime),
+            home_odds_ml: matchup.odds[0].moneyLine.currentHomeOdds,
+            away_odds_ml: matchup.odds[0].moneyLine.currentAwayOdds,
+            home_handicap: matchup.odds[0].pointSpread.currentHomeHandicap,
+            away_handicap: matchup.odds[0].pointSpread.currentAwayHandicap,
+            home_odds_spread: matchup.odds[0].pointSpread.currentHomeOdds,
+            away_odds_spread: matchup.odds[0].pointSpread.currentAwayOdds,
+            over_under_total: matchup.odds[0].overUnder.currentTotal,
+            over_odd: matchup.odds[0].overUnder.currentOverOdd,
+            under_odd: matchup.odds[0].overUnder.currentUnderOdd,
+        })
+        if(error){
+            console.error(`Supabase error:`, error)
+        }
+    }
 })
 
 cron.schedule('15 0 * * *', () => {
     evaluatePicks("nba");
 })
 
-cron.schedule('30 2 * * 2', () => {
-    fetchNFLSchedule();
+cron.schedule('30 2 * * 2', async () => {
+    const results = await fetchNFLSchedule();
+
+    for (const matchup of results.thursday){ 
+        const { error } = await supabase.from("nfl_games").insert({
+            home_team: matchup.homeTeam.shortName,
+            away_team: matchup.awayTeam.shortName,
+            event_date: new Date(matchup.scheduledTime),
+            home_odds_ml: matchup.odds[0].moneyLine.currentHomeOdds,
+            away_odds_ml: matchup.odds[0].moneyLine.currentAwayOdds,
+            home_handicap: matchup.odds[0].pointSpread.currentHomeHandicap,
+            away_handicap: matchup.odds[0].pointSpread.currentAwayHandicap,
+            home_odds_spread: matchup.odds[0].pointSpread.currentHomeOdds,
+            away_odds_spread: matchup.odds[0].pointSpread.currentAwayOdds,
+            over_under_total: matchup.odds[0].overUnder.currentTotal,
+            over_odd: matchup.odds[0].overUnder.currentOverOdd,
+            under_odd: matchup.odds[0].overUnder.currentUnderOdd,
+        })
+        if(error){
+            console.error(`Supabase error:`, error)
+        }
+    }
+    for (const matchup of results.friday){ 
+        const { error } = await supabase.from("nfl_games").insert({
+            home_team: matchup.homeTeam.shortName,
+            away_team: matchup.awayTeam.shortName,
+            event_date: new Date(matchup.scheduledTime),
+            home_odds_ml: matchup.odds[0].moneyLine.currentHomeOdds,
+            away_odds_ml: matchup.odds[0].moneyLine.currentAwayOdds,
+            home_handicap: matchup.odds[0].pointSpread.currentHomeHandicap,
+            away_handicap: matchup.odds[0].pointSpread.currentAwayHandicap,
+            home_odds_spread: matchup.odds[0].pointSpread.currentHomeOdds,
+            away_odds_spread: matchup.odds[0].pointSpread.currentAwayOdds,
+            over_under_total: matchup.odds[0].overUnder.currentTotal,
+            over_odd: matchup.odds[0].overUnder.currentOverOdd,
+            under_odd: matchup.odds[0].overUnder.currentUnderOdd,
+        })
+        if(error){
+            console.error(`Supabase error:`, error)
+        }
+    }
+    for (const matchup of results.sunday){ 
+        const { error } = await supabase.from("nfl_games").insert({
+            home_team: matchup.homeTeam.shortName,
+            away_team: matchup.awayTeam.shortName,
+            event_date: new Date(matchup.scheduledTime),
+            home_odds_ml: matchup.odds[0].moneyLine.currentHomeOdds,
+            away_odds_ml: matchup.odds[0].moneyLine.currentAwayOdds,
+            home_handicap: matchup.odds[0].pointSpread.currentHomeHandicap,
+            away_handicap: matchup.odds[0].pointSpread.currentAwayHandicap,
+            home_odds_spread: matchup.odds[0].pointSpread.currentHomeOdds,
+            away_odds_spread: matchup.odds[0].pointSpread.currentAwayOdds,
+            over_under_total: matchup.odds[0].overUnder.currentTotal,
+            over_odd: matchup.odds[0].overUnder.currentOverOdd,
+            under_odd: matchup.odds[0].overUnder.currentUnderOdd,
+        })
+        if(error){
+            console.error(`Supabase error:`, error)
+        }
+    }
+    for (const matchup of results.monday){ 
+        const { error } = await supabase.from("nfl_games").insert({
+            home_team: matchup.homeTeam.shortName,
+            away_team: matchup.awayTeam.shortName,
+            event_date: new Date(matchup.scheduledTime),
+            home_odds_ml: matchup.odds[0].moneyLine.currentHomeOdds,
+            away_odds_ml: matchup.odds[0].moneyLine.currentAwayOdds,
+            home_handicap: matchup.odds[0].pointSpread.currentHomeHandicap,
+            away_handicap: matchup.odds[0].pointSpread.currentAwayHandicap,
+            home_odds_spread: matchup.odds[0].pointSpread.currentHomeOdds,
+            away_odds_spread: matchup.odds[0].pointSpread.currentAwayOdds,
+            over_under_total: matchup.odds[0].overUnder.currentTotal,
+            over_odd: matchup.odds[0].overUnder.currentOverOdd,
+            under_odd: matchup.odds[0].overUnder.currentUnderOdd,
+        })
+        if(error){
+            console.error(`Supabase error:`, error)
+        }
+    }
 })
 
 cron.schedule('40 2 * * 2', () => {
