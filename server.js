@@ -4,6 +4,7 @@ const { GoogleGenAI } = require('@google/genai')
 const express = require('express');
 const cron = require('node-cron');
 const cors = require('cors');
+const e = require('express');
 const env = require('dotenv').config();
 const port = 5169;
 
@@ -309,8 +310,16 @@ cron.schedule('5 0 * * *', () => {
     fetchNBASchedule();
 })
 
+cron.schedule('15 0 * * *', () => {
+    evaluatePicks("nba");
+})
+
 cron.schedule('30 2 * * 2', () => {
     fetchNFLSchedule();
+})
+
+cron.schedule('40 2 * * 2', () => {
+    evaluatePicks("nfl");
 })
 
 app.listen(port, () => {
