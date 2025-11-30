@@ -1,0 +1,30 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "Backend for sports betting assistance platform",
+  "main": "server.js",
+  "scripts": {
+    "test": "btest"
+  },
+  "keywords": [
+    "sports",
+    "betting",
+    "odds",
+    "ai",
+    "bet"
+  ],
+  "author": "Michael Bischoff",
+  "license": "ISC",
+  "dependencies": {
+    "@google/genai": "^1.30.0",
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.84.0",
+    "apify-client": "^2.20.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "google": "^2.1.0",
+    "node-cron": "^4.2.1",
+    "node-fetch": "^3.3.2"
+  }
+}
