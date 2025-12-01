@@ -1,20 +1,12 @@
 {
   "crons": [
     {
-      "path": "/cron/nba-schedule",
+      "path": "/cron/nba-daily",
       "schedule": "5 0 * * *"
     },
     {
-      "path": "/cron/nba-picks",
-      "schedule": "15 0 * * *"
-    },
-    {
-      "path": "/cron/nfl-schedule",
+      "path": "/cron/nfl-weekly",
       "schedule": "30 2 * * 2"
-    },
-    {
-      "path": "/cron/nfl-picks",
-      "schedule": "40 2 * * 2"
     }
   ]
 }

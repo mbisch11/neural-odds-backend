@@ -84,85 +84,43 @@ app.get('/schedule/nfl', async (req, res) => {
     res.send(results)
 })
 
-app.get('/cron/nba-schedule', async (req, res) => {
-    const results = await fetchNBASchedule();
+// -------------------- CRON ENDPOINTS --------------------
 
+// 1) NBA: fetch schedule -> insert games -> evaluate picks
+app.get('/cron/nba-daily', async (req, res) => {
     try {
-        for (const matchup of results){ 
-            const { error } = await supabase.from("nba_games").insert({
-                home_team: matchup.homeTeam.shortName,
-                away_team: matchup.awayTeam.shortName,
-                event_date: new Date(matchup.scheduledTime),
-                home_odds_ml: matchup.odds[0].moneyLine.currentHomeOdds,
-                away_odds_ml: matchup.odds[0].moneyLine.currentAwayOdds,
-                home_handicap: matchup.odds[0].pointSpread.currentHomeHandicap,
-                away_handicap: matchup.odds[0].pointSpread.currentAwayHandicap,
-                home_odds_spread: matchup.odds[0].pointSpread.currentHomeOdds,
-                away_odds_spread: matchup.odds[0].pointSpread.currentAwayOdds,
-                over_under_total: matchup.odds[0].overUnder.currentTotal,
-                over_odd: matchup.odds[0].overUnder.currentOverOdd,
-                under_odd: matchup.odds[0].overUnder.currentUnderOdd,
-            })
-            if(error){
-                console.error(`Supabase error:`, error)
-            }
-        }
-        res.json({ ok: true, job: 'nfl-schedule' });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ ok: false, error: err.message });
-    }
-})
+        const scheduleResult = await runNBAScheduleJob(); // inserts games first
+        await evaluatePicks("nba");                       // only runs if above didn't throw
 
-app.get('/cron/nfl-schedule', async (req, res) => {
-    const results = await fetchNFLSchedule();
-
-    try {
-        for (const matchup of results){ 
-            const { error } = await supabase.from("nfl_games").insert({
-                home_team: matchup.homeTeam.shortName,
-                away_team: matchup.awayTeam.shortName,
-                event_date: new Date(matchup.scheduledTime),
-                home_odds_ml: matchup.odds[0].moneyLine.currentHomeOdds,
-                away_odds_ml: matchup.odds[0].moneyLine.currentAwayOdds,
-                home_handicap: matchup.odds[0].pointSpread.currentHomeHandicap,
-                away_handicap: matchup.odds[0].pointSpread.currentAwayHandicap,
-                home_odds_spread: matchup.odds[0].pointSpread.currentHomeOdds,
-                away_odds_spread: matchup.odds[0].pointSpread.currentAwayOdds,
-                over_under_total: matchup.odds[0].overUnder.currentTotal,
-                over_odd: matchup.odds[0].overUnder.currentOverOdd,
-                under_odd: matchup.odds[0].overUnder.currentUnderOdd,
-            })
-            if(error){
-                console.error(`Supabase error:`, error)
-            }
-        }
-        res.json({ ok: true, job: 'nfl-schedule' });
+        res.json({
+            ok: true,
+            jobs: ['nba-schedule', 'nba-picks'],
+            scheduleResult,
+        });
     } catch (err) {
-        console.error("Error running NFL schedule job:", err);
-        res.status(500).json({ ok: false, error: err.message });
-    }  
-})
-
-app.get('/cron/nba-picks', async (req, res) => {
-    try {
-        await evaluatePicks("nba");
-        res.json({ ok: true, job: 'nba-picks' });
-    } catch (err) {
-        console.error("Error running NBA picks job:", err);
+        console.error("Error running NBA daily cron:", err);
         res.status(500).json({ ok: false, error: err.message });
     }
 });
 
-app.get('/cron/nfl-picks', async (req, res) => {
+// 2) NFL: fetch schedule -> insert games -> evaluate picks
+app.get('/cron/nfl-weekly', async (req, res) => {
     try {
-        await evaluatePicks("nfl");
-        res.json({ ok: true, job: 'nfl-picks' });
+        const scheduleResult = await runNFLScheduleJob(); // inserts games first
+        await evaluatePicks("nfl");                       // only runs if above didn't throw
+
+        res.json({
+            ok: true,
+            jobs: ['nfl-schedule', 'nfl-picks'],
+            scheduleResult,
+        });
     } catch (err) {
-        console.error("Error running NFL picks job:", err);
+        console.error("Error running NFL weekly cron:", err);
         res.status(500).json({ ok: false, error: err.message });
     }
 });
+
+// -------------------- NBA HELPERS --------------------
 
 async function fetchNBASchedule() {
     const tomorrow = new Date();
@@ -174,11 +132,41 @@ async function fetchNBASchedule() {
         date: formatted,
         sportsbook: "Consensus"
     };
-    const run = await apify.actor('harvest/sportsbook-odds-scraper').call(input);
 
+    const run = await apify.actor('harvest/sportsbook-odds-scraper').call(input);
     const { items } = await apify.dataset(run.defaultDatasetId).listItems();
     return items;
 }
+
+async function runNBAScheduleJob() {
+    const results = await fetchNBASchedule();
+
+    const rows = results.map(matchup => ({
+        home_team: matchup.homeTeam.shortName,
+        away_team: matchup.awayTeam.shortName,
+        event_date: new Date(matchup.scheduledTime),
+        home_odds_ml: matchup.odds[0].moneyLine.currentHomeOdds,
+        away_odds_ml: matchup.odds[0].moneyLine.currentAwayOdds,
+        home_handicap: matchup.odds[0].pointSpread.currentHomeHandicap,
+        away_handicap: matchup.odds[0].pointSpread.currentAwayHandicap,
+        home_odds_spread: matchup.odds[0].pointSpread.currentHomeOdds,
+        away_odds_spread: matchup.odds[0].pointSpread.currentAwayOdds,
+        over_under_total: matchup.odds[0].overUnder.currentTotal,
+        over_odd: matchup.odds[0].overUnder.currentOverOdd,
+        under_odd: matchup.odds[0].overUnder.currentUnderOdd,
+    }));
+
+    const { error } = await supabase.from("nba_games").insert(rows);
+
+    if (error) {
+        console.error("Supabase error inserting NBA games:", error);
+        throw error; // ensures picks DO NOT run if insert fails
+    }
+
+    return { inserted: rows.length };
+}
+
+// -------------------- NFL HELPERS --------------------
 
 async function fetchNFLSchedule() {
     const day = new Date();
@@ -189,9 +177,8 @@ async function fetchNFLSchedule() {
     const friday = day.toISOString().split("T")[0];
     day.setDate(day.getDate() + 2);
     const sunday = day.toISOString().split("T")[0];
-    day.setDate(day.getDate() + 1);
+    day.setDate(day.getDate() + 2);
     const monday = day.toISOString().split("T")[0];
-
 
     const input_th = { 
         league: "NFL",
@@ -226,9 +213,37 @@ async function fetchNFLSchedule() {
     const { items: items_mo } = await apify.dataset(response_mo.defaultDatasetId).listItems();
 
     const resultArray = items_th.concat(items_fr, items_su, items_mo);
-
-    return (resultArray)
+    return resultArray;
 }
+
+async function runNFLScheduleJob() {
+    const results = await fetchNFLSchedule();
+
+    const rows = results.map(matchup => ({
+        home_team: matchup.homeTeam.shortName,
+        away_team: matchup.awayTeam.shortName,
+        event_date: new Date(matchup.scheduledTime),
+        home_odds_ml: matchup.odds[0].moneyLine.currentHomeOdds,
+        away_odds_ml: matchup.odds[0].moneyLine.currentAwayOdds,
+        home_handicap: matchup.odds[0].pointSpread.currentHomeHandicap,
+        away_handicap: matchup.odds[0].pointSpread.currentAwayHandicap,
+        home_odds_spread: matchup.odds[0].pointSpread.currentHomeOdds,
+        away_odds_spread: matchup.odds[0].pointSpread.currentAwayOdds,
+        over_under_total: matchup.odds[0].overUnder.currentTotal,
+        over_odd: matchup.odds[0].overUnder.currentOverOdd,
+        under_odd: matchup.odds[0].overUnder.currentUnderOdd,
+    }));
+
+    const { error } = await supabase.from("nfl_games").insert(rows);
+
+    if (error) {
+        console.error("Supabase error inserting NFL games:", error);
+        throw error;
+    }
+
+    return { inserted: rows.length };
+}
+
 
 async function evaluatePicks(league){
     const matchups = await getModelContext(league);
@@ -313,16 +328,29 @@ async function getModelContext(leagueString){
 
 async function getAllMatchupData(leagueString) {
     const league = leagueString.toLowerCase();
-    const teamTable = `${league}_teams`; 
+    const teamTable = `${league}_teams`;
     const picksTable = `${league}_picks`;
+
+    const now = new Date();
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+
+    const startISO = start.toISOString();
 
     const { data, error } = await supabase
         .from(`${league}_games`)
-        .select(`*, ${picksTable} (*), home_details: ${teamTable}!home_team (*), away_details: ${teamTable}!away_team (*)`);
+        .select(`
+            *,
+            ${picksTable} (*),
+            home_details:${teamTable}!home_team (*),
+            away_details:${teamTable}!away_team (*)
+        `)
+        .gte("event_date", startISO);
+
     if (error) {
-        console.error(`Supabase error fetching combined data:`, error);
+        console.error(`Supabase error fetching today's games:`, error);
         return [];
     }
+
     return data;
 }
 
