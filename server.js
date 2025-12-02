@@ -84,13 +84,10 @@ app.get('/schedule/nfl', async (req, res) => {
     res.send(results)
 })
 
-// -------------------- CRON ENDPOINTS --------------------
-
-// 1) NBA: fetch schedule -> insert games -> evaluate picks
 app.get('/cron/nba-daily', async (req, res) => {
     try {
-        const scheduleResult = await runNBAScheduleJob(); // inserts games first
-        await evaluatePicks("nba");                       // only runs if above didn't throw
+        const scheduleResult = await runNBAScheduleJob();
+        await evaluatePicks("nba");
 
         res.json({
             ok: true,
@@ -103,11 +100,10 @@ app.get('/cron/nba-daily', async (req, res) => {
     }
 });
 
-// 2) NFL: fetch schedule -> insert games -> evaluate picks
 app.get('/cron/nfl-weekly', async (req, res) => {
     try {
-        const scheduleResult = await runNFLScheduleJob(); // inserts games first
-        await evaluatePicks("nfl");                       // only runs if above didn't throw
+        const scheduleResult = await runNFLScheduleJob();
+        await evaluatePicks("nfl");
 
         res.json({
             ok: true,
@@ -119,8 +115,6 @@ app.get('/cron/nfl-weekly', async (req, res) => {
         res.status(500).json({ ok: false, error: err.message });
     }
 });
-
-// -------------------- NBA HELPERS --------------------
 
 async function fetchNBASchedule() {
     const tomorrow = new Date();
@@ -160,14 +154,11 @@ async function runNBAScheduleJob() {
 
     if (error) {
         console.error("Supabase error inserting NBA games:", error);
-        throw error; // ensures picks DO NOT run if insert fails
+        throw error;
     }
 
     return { inserted: rows.length };
 }
-
-// -------------------- NFL HELPERS --------------------
-
 async function fetchNFLSchedule() {
     const day = new Date();
     
